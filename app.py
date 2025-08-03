@@ -21,3 +21,5 @@ if st.button("Gonder"):
         st.markdown(f"**Bot:** {response.text}")
     else:
         st.warning("Lutfen bir mesaj yazin.")
+
+# streamlit run app.py
