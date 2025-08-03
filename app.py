@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-model = genai.GenerativeModel("gemini-pro")
+model = genai.GenerativeModel("models/gemini-2.5-pro")
 
 st.set_page_config(page_title="E-Ticaret Chatbot", page_icon="🤖")
 
