@@ -1,15 +1,26 @@
+import os
 import streamlit as st
-import requests
+import google.generativeai as genai
+from dotenv import load_dotenv
 
-st.title("🌍 Ürün Fiyat Analizi Chatbotu")
+# API anahtarını yükle
+load_dotenv()
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-user_input = st.text_input("Ürün adını giriniz:")
+# Modeli başlat
+model = genai.GenerativeModel("gemini-pro")
 
-if st.button("Tahmin Et"):
-    try:
-        response = requests.post("http://127.0.0.1:5000/predict", 
-                                 json={"product": user_input}).json()
-        st.write(f"💡 {user_input} ürünü en pahalı olarak {response['country']} ülkesinde satılabilir. "
-                 f"Tahmini fiyat: {response['price']} $")
-    except:
-        st.write("❌ Backend'e bağlanılamadı. Lütfen önce backend.py dosyasını çalıştırın.")
+st.set_page_config(page_title="E-Ticaret Chatbot", page_icon="🤖")
+
+st.title("💬 E-Ticaret Chatbot")
+st.write("Ucuz üretim - pahalı satış için öneriler alın.")
+
+# Kullanıcı girişi
+user_input = st.text_input("Mesajınızı yazın:")
+
+if st.button("Gönder"):
+    if user_input.strip() != "":
+        response = model.generate_content(user_input)
+        st.markdown(f"**Bot:** {response.text}")
+    else:
+        st.warning("Lütfen bir mesaj yazın.")
