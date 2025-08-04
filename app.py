@@ -1,25 +1,16 @@
-import os
 import streamlit as st
-import google.generativeai as genai
-from dotenv import load_dotenv
 
-load_dotenv()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+st.set_page_config(page_title="E-Ticaret Asistan", page_icon="🤖")
 
-model = genai.GenerativeModel("models/gemini-2.5-pro")
+st.title("🌍 E-Ticaret Fiyat Tahmin Asistanı")
+st.write("Bu uygulama sayesinde, bir ürünü hangi ülkede en pahalıya satabileceğinizi öğrenebilirsiniz.")
 
-st.set_page_config(page_title="E-Ticaret Chatbot", page_icon="🤖")
+st.markdown("### 📌 Menüden Chatbot'u seçerek başlayın")
+st.image("https://cdn-icons-png.flaticon.com/512/1042/1042339.png", width=150)
 
-st.title("💬 E-Ticaret Chatbot")
-st.write("Ucuz uretim - pahali satis icin oneriler alin.")
 
-user_input = st.text_input("Mesajinizi yazin:")
 
-if st.button("Gonder"):
-    if user_input.strip() != "":
-        response = model.generate_content(user_input)
-        st.markdown(f"**Bot:** {response.text}")
-    else:
-        st.warning("Lutfen bir mesaj yazin.")
 
+# RUN
+# pip install -r requirements.txt
 # streamlit run app.py

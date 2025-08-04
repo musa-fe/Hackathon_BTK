@@ -7,7 +7,6 @@ def predict():
     data = request.get_json()
     product = data.get("product", "").lower()
 
-    # Sahte cevap
     response = {
         "country": "Norveç",
         "price": 950
