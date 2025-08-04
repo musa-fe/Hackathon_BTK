@@ -1,8 +1,8 @@
 import streamlit as st
 
-st.title("ℹ️ Hakkında")
+st.title("ℹ️ Hakkinda")
 st.write("""
-Bu chatbot, dünyanın farklı ülkelerindeki fiyatları tahmin ederek  
-ucuz üretim - pahalı satış stratejinize yardımcı olur.  
-Hackathon ekibiniz tarafından geliştirilmiştir.
+Bu chatbot, dünyanin farkli ülkelerindeki fiyatlari tahmin ederek  
+ucuz üretim - pahali satiş stratejinize yardimci olur.  
+Hackathon ekibiniz tarafindan geliştirilmiştir.
 """)
