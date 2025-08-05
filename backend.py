@@ -2,40 +2,50 @@ from flask import Flask, request, jsonify
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify
+import joblib
 
-app = Flask(__name__)
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    user_message = data.get("message", "")
-
-    # Buraya chatbot cevabı eklenir
-    bot_reply = f"Bu '{user_message}' için en yüksek fiyatli ülke Norveç (örnek cevap)"
-
-    return jsonify({"response": bot_reply})
-
-if __name__ == "__main__":
-    app.run(port=5000, debug=True)
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 app = Flask(__name__)
-model = genai.GenerativeModel("models/gemini-2.5-pro")
+
+
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+gemini_model = genai.GenerativeModel("models/gemini-2.5-pro")
+
+ml_model_path = os.path.join("model", "ecomm_price_model.joblib")
+ml_model = None
+if os.path.exists(ml_model_path):
+    try:
+        ml_model = joblib.load(ml_model_path)
+        print("✅ ML modeli yüklendi.")
+    except:
+        print("⚠️ ML modeli yüklenemedi.")
 
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
-    message = data.get("message", "")
+    user_message = data.get("message", "").strip()
 
-    if message.strip() == "":
-        return jsonify({"response": "Mesaj boş."})
+    if not user_message:
+        return jsonify({"response": "Mesaj boş gönderilemez."})
 
-    response = model.generate_content(message)
+    try:
+        gemini_response = gemini_model.generate_content(user_message)
+        bot_reply = gemini_response.text
+    except Exception as e:
+        bot_reply = f"Gemini cevabi alinamadi: {str(e)}"
 
-    return jsonify({"response": response.text})
+    ml_reply = ""
+    if ml_model:
+        try:
+
+            prediction = ml_model.predict([[len(user_message)]])
+            ml_reply = f"\nTahmini fiyat: {prediction[0]} $"
+        except Exception as e:
+            ml_reply = f"\n(Tahmin yapilamadi: {str(e)})"
+
+    return jsonify({"response": bot_reply + ml_reply})
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
