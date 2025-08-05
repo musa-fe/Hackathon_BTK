@@ -3,11 +3,14 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 import joblib
+from flask_cors import CORS
+
 
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
