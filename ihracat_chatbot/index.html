@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI İhracat Analiz Asistani</title>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Chatbot alanı -->
+  <div style="margin: 20px;">
+    <h2>💬 Chatbot</h2>
+    <input type="text" id="userInput" placeholder="Mesajinizi yazin" style="width: 300px; padding: 5px;" />
+    <button onclick="sendMessage()" style="padding: 5px 10px;">Gönder</button>
+    <div id="chatBox" style="margin-top: 15px; border: 1px solid #ccc; padding: 10px; width: 350px; height: 200px; overflow-y: auto;"></div>
+  </div>
+
+  <!-- Ana uygulama dosyası -->
+  <script type="module" src="/src/main.jsx"></script>
+
+  <!-- Chatbot API bağlantısı -->
+  <script>
+    async function sendMessage() {
+      const userMessage = document.getElementById("userInput").value;
+
+      const response = await fetch("http://127.0.0.1:5000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage })
+      });
+
+      const data = await response.json();
+
+      // Kullanıcı mesajını ve bot cevabını ekle
+      const chatBox = document.getElementById("chatBox");
+      chatBox.innerHTML += `<p><strong>Siz:</strong> ${userMessage}</p>`;
+      chatBox.innerHTML += `<p><strong>Bot:</strong> ${data.response}</p>`;
+
+      // Mesaj kutusunu temizle
+      document.getElementById("userInput").value = "";
+    }
+  </script>
+</body>
+</html>
