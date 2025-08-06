@@ -48,15 +48,34 @@ def prepare_dataframe(data: dict):
 # --------------------------
 # 5) Chatbot API
 # --------------------------
+# ...existing code...
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
     message = data.get("message", "")
     if not message.strip():
         return jsonify({"response": "Mesaj boş."})
-    response = gemini_model.generate_content(message)
-    return jsonify({"response": response.text})
 
+    # Basit anahtar kelime kontrolü (örnek)
+    urun_anahtar_kelimeler = ["ürün", "fiyat", "tahmin", "export", "ihraç", "kategori"]
+    if any(kelime in message.lower() for kelime in urun_anahtar_kelimeler):
+        # Burada örnek olarak sabit veriyle ML tahmini yapılıyor
+        try:
+            input_data = {"category": "Electronics", "price": 100}
+            df_input = prepare_dataframe(input_data)
+            prediction = model.predict(df_input)
+            return jsonify({
+                "response": f"Bu ürün için tahmini fiyat: {float(prediction[0]):.2f} $"
+            })
+        except Exception as e:
+            return jsonify({"response": f"ML tahmini yapılamadı: {str(e)}"})
+    else:
+        # Normal sohbet
+        response = gemini_model.generate_content(message)
+        return jsonify({"response": response.text})
+
+# ...existing code...
 # --------------------------
 # 6) ML Prediction API
 # --------------------------
