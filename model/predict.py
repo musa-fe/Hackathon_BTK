@@ -64,7 +64,7 @@ def parse_kv_pairs(kv_list):
     out = {}
     for kv in kv_list or []:
         if "=" not in kv:
-            print(f"--kv 'key=value' biçiminde olmalı, sorunlu: {kv}", file=sys.stderr)
+            print(f"--kv 'key=value' biçiminde olmali, sorunlu: {kv}", file=sys.stderr)
             sys.exit(2)
         k, v = kv.split("=", 1)
         k = k.strip()
@@ -122,7 +122,7 @@ def main():
         return
 
    
-    print("Kullanım örneği:")
+    print("Kullanim örneği:")
     print('python predict.py --kv "category=Electronics" --kv "brand=Sony" --kv "city=Berlin" --kv "shipping_cost=6.0" --kv "seller=DemoSeller" --kv "stock=True" --kv "platform=Amazon" --kv "month=7"')
 
 if __name__ == "__main__":
