@@ -28,32 +28,73 @@ load_dotenv()
 # API anahtarınızın .env dosyasında GOOGLE_API_KEY olarak tanımlandığından emin olun
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 # Sizin orijinal model adınızı koruyoruz
-gemini_model = genai.GenerativeModel("models/gemini-2.5-pro") 
+gemini_model = genai.GenerativeModel("models/gemini-1.5-flash") 
 
 # --------------------------
-# 3) ML Modelini Yükle
+# 3) ML Modelini ve Veri Setini Yükle
 # --------------------------
 # Sizin orijinal dosya yolu tanımlamalarını koruyoruz
 MODEL_PATH = "model/model.joblib"
 FEATURES_PATH = "model/feature_columns.json"
+DATA_FILE_PATH = "synthetic_ecommerce_data.xlsx" 
+
+model = None
+feature_cols = None
+ecommerce_df = None # E-ticaret veri setini global olarak tanımlıyoruz
+product_names_data = {} # Ürün isimlerini ve ilgili verilerini saklayacak sözlük
 
 try:
     if not Path(MODEL_PATH).exists():
         raise FileNotFoundError(f"Model dosyası bulunamadı: {MODEL_PATH}")
     if not Path(FEATURES_PATH).exists():
         raise FileNotFoundError(f"feature_columns.json dosyası bulunamadı: {FEATURES_PATH}")
+    if not Path(DATA_FILE_PATH).exists(): 
+        raise FileNotFoundError(f"Veri dosyası bulunamadı: {DATA_FILE_PATH}. Lütfen dosya adının ve uzantısının doğru olduğundan emin olun.")
 
     model = joblib.load(MODEL_PATH)
     with open(FEATURES_PATH, "r", encoding="utf-8") as f:
         feature_cols = json.load(f)
+    
+    # Dosya uzantısına göre doğru okuma fonksiyonunu seçiyoruz
+    if DATA_FILE_PATH.endswith('.csv'):
+        ecommerce_df = pd.read_csv(DATA_FILE_PATH)
+    elif DATA_FILE_PATH.endswith('.xlsx'):
+        ecommerce_df = pd.read_excel(DATA_FILE_PATH)
+    else:
+        raise ValueError("Desteklenmeyen veri dosyası uzantısı. Lütfen .csv veya .xlsx kullanın.")
 
-    logging.info("ML Model ve feature kolonları başarıyla yüklendi.")
+    # product_name sütunundaki verileri hazırlama
+    # product_name_clean sütunu varsa onu kullan, yoksa product_name kullan
+    product_name_col = 'product_name_clean' if 'product_name_clean' in ecommerce_df.columns else 'product_name'
+    
+    # Her bir ürün adı için ilgili kategori, marka, ülke vb. bilgileri sakla
+    # İlk eşleşen satırı alacak şekilde ayarlıyoruz
+    for index, row in ecommerce_df.iterrows():
+        product_name_lower = str(row[product_name_col]).lower()
+        if product_name_lower not in product_names_data:
+            product_names_data[product_name_lower] = {
+                'product_id': str(row['product_id']), # product_id'yi de ekleyelim
+                'product_name_clean': str(row[product_name_col]),
+                'category': str(row['category']),
+                'brand': str(row['brand']),
+                'country': str(row['country']),
+                'shipping_cost': float(row['shipping_cost']) if pd.notna(row['shipping_cost']) else 0.0,
+                'city': str(row['city']),
+                'seller': str(row['seller']),
+                'stock': bool(row['stock']),
+                'platform': str(row['platform']),
+                'month': pd.to_datetime(row['last_updated']).month if 'last_updated' in row and pd.notna(row['last_updated']) else pd.Timestamp.now().month
+            }
+
+
+    logging.info("ML Model, feature kolonları ve e-ticaret veri seti başarıyla yüklendi.")
+    logging.info(f"Yüklenen benzersiz ürün adı sayısı: {len(product_names_data)}")
 
 except FileNotFoundError as e:
-    logging.error(f"Dosya yükleme hatası: {e}")
+    logging.error(f"Dosya yükleme hatası: {e}. Lütfen tüm gerekli dosyaların doğru yerde olduğundan emin olun.")
     exit(1)
 except Exception as e:
-    logging.error(f"Model veya feature kolonları yüklenirken beklenmeyen bir hata oluştu: {e}")
+    logging.error(f"Model, feature kolonları veya veri seti yüklenirken beklenmeyen bir hata oluştu: {e}")
     exit(1)
 
 # --------------------------
@@ -63,7 +104,7 @@ chat_state = {}  # session_id: {stage: int, data: dict}
 MAX_CHAT_HISTORY = 10 # Örnek için bir limit belirledik
 
 # --------------------------
-# 4) Yardımcı Fonksiyon
+# 4) Yardımcı Fonksiyonlar
 # --------------------------
 def prepare_dataframe(data: dict):
     """JSON verisini DataFrame'e çevir ve kolonları hizala"""
@@ -73,8 +114,79 @@ def prepare_dataframe(data: dict):
             df[col] = None # Eğer kolonda veri yoksa None atar
     return df[feature_cols]
 
+def get_country_recommendations_for_prediction(product_data, ecommerce_df, model, feature_cols):
+    # CSV'deki benzersiz ülkeleri alıyoruz
+    all_possible_countries = ecommerce_df['country'].unique().tolist()
+    
+    predictions_per_country = []
+
+    # Temel girdi verisini kopyala ve 'country' ile 'country_clean' alanlarını çıkar
+    base_input_for_model = product_data.copy()
+    base_input_for_model.pop('country', None)
+    base_input_for_model.pop('country_clean', None) 
+    
+    # Varsayılan değerleri ayarla (frontend'den gelmeyenler için)
+    base_input_for_model['city'] = base_input_for_model.get('city', None)
+    base_input_for_model['seller'] = base_input_for_model.get('seller', None)
+    base_input_for_model['stock'] = base_input_for_model.get('stock', 100) # Varsayılan stok
+    base_input_for_model['platform'] = base_input_for_model.get('platform', "E-commerce") # Varsayılan platform
+    base_input_for_model['month'] = base_input_for_model.get('month', pd.Timestamp.now().month) # Mevcut ay
+
+    for country in all_possible_countries:
+        current_product_input = base_input_for_model.copy()
+        current_product_input['country'] = country
+        
+        df_sample = prepare_dataframe(current_product_input)
+        
+        try:
+            pred_price = model.predict(df_sample)[0] 
+            predictions_per_country.append({
+                "name": country,
+                "volume": round(float(pred_price), 2), 
+                "reason": f"Bu ülkede tahmini satış fiyatı: {round(float(pred_price), 2)} USD."
+            })
+        except Exception as e:
+            logging.warning(f"'{country}' için tahmin yapılamadı: {e}")
+
+    predictions_per_country.sort(key=lambda x: x["volume"], reverse=True)
+    top_n_countries = predictions_per_country[:5] 
+
+    hs_code_info = "HS Kodu tahmini için daha fazla bilgiye ihtiyaç var."
+    if product_data.get('category', '').lower() == 'oyuncak':
+        hs_code_info = "Tahmini HS Kodu: 9503.00 (Oyuncaklar)."
+    elif product_data.get('category', '').lower() == 'elektronik':
+        hs_code_info = "Tahmini HS Kodu: 8500.00 (Elektronik Cihazlar)."
+
+    return {
+        "recommendation": f"'{product_data.get('product_name_clean', 'Ürün')}' için en yüksek fiyat potansiyeli olan ülkeler:",
+        "hsCodeInfo": hs_code_info,
+        "countries": top_n_countries,
+        "reason": "Bu ülkeler, girdiğiniz ürün özellikleri için en yüksek tahmini satış fiyatına sahip pazarlardır."
+    }
+
+# ML Tahminini yapan ve zengin yanıtı döndüren yardımcı fonksiyon
+def perform_ml_prediction_and_get_rich_response(product_data):
+    try:
+        # Frontend'den gelen 'country' değeri için doğrudan tahmin yap
+        df_input_for_single_country = prepare_dataframe(product_data)
+        predicted_price_for_input_country = model.predict(df_input_for_single_country)[0]
+        
+        # Tüm olası ülkeler için tahminleri al ve sırala
+        country_recommendations = get_country_recommendations_for_prediction(product_data, ecommerce_df, model, feature_cols)
+        
+        full_response = {
+            "predicted_price": float(predicted_price_for_input_country), 
+            "recommendation_data": country_recommendations 
+        }
+        return full_response
+    except Exception as e:
+        logging.error(f"perform_ml_prediction_and_get_rich_response içinde ML tahmini yapılamadı: {e}")
+        # Hata durumunda bir hata objesi döndürüyoruz
+        return {"error": str(e), "message": "Fiyat tahmini yapılırken bir hata oluştu."}
+
+
 # --------------------------
-# Yeni chatbot mantığı için yardımcı fonksiyon
+# Chatbot Mantığı
 # --------------------------
 def get_chatbot_response_based_on_state(session_id, user_message):
     global chat_state
@@ -84,18 +196,66 @@ def get_chatbot_response_based_on_state(session_id, user_message):
     data = current_state['data']
     response = ""
     
-    # Adım 0: Giriş veya genel sohbet
-    if stage == 0:
-        if "toys" in user_message.lower() or "oyuncak" in user_message.lower():
+    user_message_lower = user_message.lower()
+
+    # Eğer kullanıcı bir önceki adımda fiyat tahmini onayı bekliyorsa
+    if stage == 'awaiting_prediction_confirmation':
+        if user_message_lower in ["evet", "yes", "tahmin et", "fiyat"]:
+            if 'product_data_for_prediction' in data:
+                # Kaydedilmiş ürün verilerini kullanarak tahmini yap
+                rich_response_data = perform_ml_prediction_and_get_rich_response(data['product_data_for_prediction'])
+                if "error" in rich_response_data:
+                    response = f"Üzgünüm, fiyat tahmini yapılırken bir sorun oluştu: {rich_response_data['message']}" # Hata mesajını kullan
+                else:
+                    response = rich_response_data
+                chat_state[session_id] = {'stage': 0, 'data': {}} # Tahmin sonrası state'i sıfırla
+            else:
+                response = "Üzgünüm, hangi ürün için tahmin yapacağımı bulamadım. Lütfen ürün adını tekrar belirtin."
+                chat_state[session_id] = {'stage': 0, 'data': {}}
+        else:
+            response = "Anladım, fiyat tahmini yapmak istemiyorsunuz. Başka bir ürün veya konuda yardımcı olabilirim."
+            chat_state[session_id] = {'stage': 0, 'data': {}} # State'i sıfırla
+
+    # Adım 0: Giriş veya genel sohbet (veya yeni bir ürün araması)
+    elif stage == 0:
+        found_product_data = None
+        for product_name_key, details in product_names_data.items():
+            # Kullanıcının mesajının ürün adını içerip içermediğini kontrol et
+            # Tam eşleşme yerine 'in' operatörü ile kısmi eşleşme yapıyoruz
+            if product_name_key in user_message_lower:
+                found_product_data = details
+                break
+        
+        if found_product_data:
+            # Ürün bulundu, detayları kullanarak yanıt ver ve tahmini onayı bekle
+            product_name = found_product_data['product_name_clean']
+            category = found_product_data['category']
+            brand = found_product_data['brand']
+            country = found_product_data['country'] 
+
+            response_text = (
+                f"Verilerimde **'{product_name}'** ürününü buldum!\n\n"
+                f"Bu ürün **'{category}'** kategorisinde, **'{brand}'** markasına ait ve genellikle **'{country}'** ülkesinde satılıyor.\n\n"
+                "Bu ürün için fiyat tahmini almak ister misiniz? Lütfen 'Evet' yazarak devam edin veya aşağıdaki formu kullanın."
+            )
+            response = response_text
+            # Ürün verilerini state'e kaydet ve aşamayı değiştir
+            chat_state[session_id] = {
+                'stage': 'awaiting_prediction_confirmation',
+                'data': {'product_data_for_prediction': found_product_data}
+            }
+        
+        # Eğer ürün bulunamadıysa ve "toys" veya "oyuncak" ise özel akış
+        elif "toys" in user_message_lower or "oyuncak" in user_message_lower:
             response = "Harika bir ürün! Daha doğru bir öneri için lütfen birkaç soruya cevap verin. Ürününüzün ana malzemesi nedir? (örn: ahşap, plastik, kumaş)"
             chat_state[session_id] = {'stage': 1, 'data': {'product_type': 'toys'}}
+        
+        # Hiçbiri değilse, genel Gemini yanıtı
         else:
-            # Standart Gemini yanıtı
             try:
-                # Gemini'ye uygulamanın bağlamını belirtiyoruz
                 context_prompt = (
-                    "Sen bir ihracat ve ürün analizi chatbotusun. Amacın, kullanıcılara ürünleri hakkında bilgi vermek, pazar analizi yapmak ve ihracat süreçlerinde yardımcı olmaktır. "
-                    "Kendini bu bağlamda tanıt ve genel sorulara da bu rolünle cevap ver. "
+                    "Sen bir ihracat ve ürün analizi chatbotusun. Amacın, kullanıcılara ürünleri hakkında bilgi vermek ve pazar analizi yapmak için gerekli detayları toplamaktır. "
+                    "Kullanıcı bir ürün veya sektör adı belirttiğinde, eğer daha fazla detaya ihtiyacın varsa (örn: ürünün tipi, malzemesi, kullanım amacı, modeli, yaş grubu gibi spesifik özellikler), bu detayları sorarak yanıtını zenginleştirmeye çalış. "
                     "Yanıtını kısa paragraflara veya madde işaretlerine ayır ve mümkünse çok uzun tutma."
                 )
                 prompt_for_gemini = f"{context_prompt}\n\nKullanıcı sorusu: {user_message}"
@@ -105,7 +265,7 @@ def get_chatbot_response_based_on_state(session_id, user_message):
                 logging.error(f"Gemini API hatası: {e}")
                 response = "Üzgünüm, Gemini ile iletişim kurarken bir sorun oluştu."
     
-    # Adım 1: Malzeme sorusu
+    # Adım 1: Malzeme sorusu (oyuncaklar için)
     elif stage == 1:
         if "ahşap" in user_message.lower():
             data['material'] = 'ahşap'
@@ -190,49 +350,6 @@ def create_rich_response_for_fabric_toys(data):
         "reason": "Bu ülkeler, yumuşak ve güvenli kumaş oyuncaklara özel ilgi duyan pazarlardır.",
     }
 
-# Yeni fonksiyon: Tahmin verisine göre ülke önerisi oluşturma
-def get_country_recommendations_for_prediction(product_data):
-    category = product_data.get('category', '').lower()
-    product_name = product_data.get('product_name_clean', '').lower()
-
-    if "oyuncak" in category or "toys" in product_name:
-        # Oyuncaklar için genel öneriler (daha spesifik hale getirilebilir)
-        return {
-            "recommendation": f"'{product_data.get('product_name_clean', 'Ürün')}' için potansiyel barındıran ülkeler:",
-            "hsCodeInfo": "Tahmini HS Kodu: 9503.00 (Oyuncaklar).",
-            "countries": [
-                {"name": "ABD", "volume": 100000000, "reason": "Büyük pazar ve çeşitli tüketici kitlesi."},
-                {"name": "Almanya", "volume": 70000000, "reason": "Kaliteye önem veren bilinçli ebeveynler."},
-                {"name": "Japonya", "volume": 40000000, "reason": "Benzersiz ve eğitici oyuncaklara ilgi."},
-            ],
-            "reason": "Bu ülkeler, genel olarak oyuncak ithalatında yüksek hacme sahiptir ve çeşitli niş pazarlar sunar.",
-        }
-    elif "elektronik" in category:
-        return {
-            "recommendation": f"'{product_data.get('product_name_clean', 'Ürün')}' için potansiyel barındıran ülkeler:",
-            "hsCodeInfo": "Tahmini HS Kodu: 8500.00 (Elektronik Cihazlar).",
-            "countries": [
-                {"name": "Çin", "volume": 500000000, "reason": "Üretim ve tüketim merkezi."},
-                {"name": "ABD", "volume": 300000000, "reason": "Yüksek teknoloji benimseme oranı."},
-                {"name": "Hollanda", "volume": 100000000, "reason": "Avrupa'ya dağıtım merkezi."},
-            ],
-            "reason": "Elektronik ürünler için küresel talep yüksek olan pazarlardır.",
-        }
-    # Daha fazla kategori ve ürün bazlı kural eklenebilir
-    else:
-        # Varsayılan genel öneriler
-        return {
-            "recommendation": f"'{product_data.get('product_name_clean', 'Ürün')}' için genel potansiyel barındıran ülkeler:",
-            "hsCodeInfo": "HS Kodu tahmini için daha fazla bilgiye ihtiyaç var.",
-            "countries": [
-                {"name": "Almanya", "volume": 150000000, "reason": "Avrupa'nın en büyük ekonomisi ve ithalatçısı."},
-                {"name": "ABD", "volume": 200000000, "reason": "Dünyanın en büyük pazarı, yüksek alım gücü."},
-                {"name": "Kanada", "volume": 80000000, "reason": "ABD ile güçlü ticaret ilişkileri, istikrarlı pazar."},
-            ],
-            "reason": "Bu ülkeler, çoğu ürün kategorisi için genel olarak yüksek ithalat potansiyeli sunar.",
-        }
-
-
 # --------------------------
 # 5) Chatbot API
 # --------------------------
@@ -259,19 +376,17 @@ def predict():
         data = request.get_json()
         logging.info(f"Prediction için alınan veri: {data}")
         
-        df_input = prepare_dataframe(data)
-        prediction = model.predict(df_input)
+        # Frontend'den gelen 'country' değeri için doğrudan tahmin yap
+        df_input_for_single_country = prepare_dataframe(data)
+        predicted_price_for_input_country = model.predict(df_input_for_single_country)[0]
         
-        predicted_price = float(prediction[0])
-        
-        # Ülke önerilerini al
-        country_recommendations = get_country_recommendations_for_prediction(data)
+        # Tüm olası ülkeler için tahminleri al ve sırala
+        country_recommendations = get_country_recommendations_for_prediction(data, ecommerce_df, model, feature_cols)
         
         # Yanıtı hem tahmin fiyatını hem de ülke önerilerini içerecek şekilde birleştir
-        # Frontend'deki renderRichResponse'un beklediği formatta bir obje döndürüyoruz
         full_response = {
-            "predicted_price": predicted_price,
-            "recommendation_data": country_recommendations # Ülke önerilerini bu anahtar altında gönderiyoruz
+            "predicted_price": float(predicted_price_for_input_country), # Formda girilen ülke için fiyat
+            "recommendation_data": country_recommendations # Diğer ülkeler için öneriler
         }
         
         logging.info(f"Tahmin ve Öneri sonucu: {full_response}")
