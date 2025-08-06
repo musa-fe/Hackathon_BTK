@@ -13,4 +13,4 @@ st.image("https://cdn-icons-png.flaticon.com/512/1042/1042339.png", width=150)
 
 # RUN
 # pip install -r requirements.txt
-# streamlit run app.py
+# streamlit run app.pypython backend.py
