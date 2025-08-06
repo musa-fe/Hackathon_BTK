@@ -188,41 +188,68 @@ export default function App() {
     return dummyResponse;
   };
 
-  // Mesaj gönderme işlevini yönetir.
+  // Mesaj gönderme işlevini yönetir. (GÜNCELLENMİŞ HALİ)
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage = {
-      id: `user-${messages.length + 1}`,
+      id: `user-${Date.now()}`,
       sender: 'user',
       text: input,
     };
-
+    
+    // Önce kullanıcı mesajını ekrana ekle
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
+    
+    // Input'u temizle ve yükleniyor durumunu başlat
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
     // İlk kullanıcı mesajından sonra sohbet adını otomatik olarak belirle
     if (messages.length === 1) {
-      setCurrentChatTitle(`${userMessage.text} İhracat Analizi`);
+      setCurrentChatTitle(`${userMessage.text} Analizi`);
     }
 
     try {
-      // API çağrısı simülasyonu.
-      setTimeout(() => {
-        const dummyResponse = getDummyResponse(userMessage.text);
-        const botResponse = {
-          id: `bot-${messages.length + 2}`,
-          sender: 'bot',
-          text: dummyResponse,
-        };
-        setMessages((prevMessages) => [...prevMessages, botResponse]);
-        setIsLoading(false);
-      }, 2000);
+      // --- BURASI GERÇEK API İSTEĞİNİN YAPILDIĞI YER ---
+      const response = await fetch('http://127.0.0.1:5000/chat', { // Backend sunucunun adresi
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: currentInput }), // Backend'in beklediği format { "message": "..." }
+      });
+
+      if (!response.ok) {
+        // Eğer sunucudan 4xx veya 5xx gibi bir hata kodu dönerse
+        throw new Error(`API hatası: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json(); // Backend'den gelen JSON yanıtını al
+
+      // Backend'den gelen yanıtı mesajlara ekle
+      const botResponse = {
+        id: `bot-${Date.now()}`,
+        sender: 'bot',
+        text: data.response, // Backend'in `jsonify({"response": response.text})` şeklinde döndürdüğü veri
+      };
+      
+      setMessages((prevMessages) => [...prevMessages, botResponse]);
+
     } catch (error) {
+      // Eğer ağ hatası veya fetch içinde bir sorun olursa
       console.error('Mesaj gönderilirken bir hata oluştu:', error);
+      const errorResponse = {
+        id: `bot-error-${Date.now()}`,
+        sender: 'bot',
+        text: `Üzgünüm, bir hata oluştu: ${error.message}. Lütfen backend sunucunun çalıştığından emin ol.`,
+      };
+      setMessages((prevMessages) => [...prevMessages, errorResponse]);
+    } finally {
+      // İstek başarılı da olsa, hata da olsa yükleniyor durumunu bitir
       setIsLoading(false);
     }
   };
