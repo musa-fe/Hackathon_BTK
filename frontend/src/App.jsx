@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sparkles, BarChart, ArrowRightCircle, Sun, Moon, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 
-// Başlangıç mesajı için bir sabit oluşturuldu.
+// Başlangiç mesaji için bir sabit oluşturuldu.
 const initialBotMessage = {
   id: 'bot-initial',
   sender: 'bot',
-  text: 'Merhaba! İhracat yapmak istediğiniz ürün veya sektör adını (ör: "Zeytinyağı", "Mobilya", "Tekstil") girerek size en uygun ülkeleri önerebilirim.',
+  text: 'Merhaba! İhracat yapmak istediğiniz ürün veya sektör adini (ör: "Zeytinyaği", "Mobilya", "Tekstil") girerek size en uygun ülkeleri önerebilirim.',
 };
 
 export default function App() {
@@ -24,9 +24,9 @@ export default function App() {
   
   // Yeni eklenen state'ler
   const [isLoadingPrediction, setIsLoadingPrediction] = useState(false);
-  // Sadece kritik inputları içeren basitleştirilmiş form verisi
+  // Sadece kritik inputlari içeren basitleştirilmiş form verisi
   const [predictionFormData, setPredictionFormData] = useState({
-    product_name_clean: '', // Ürün Adı
+    product_name_clean: '', // Ürün Adi
     category: '',           // Kategori
     brand: '',              // Marka
     country: '',            // Hedef Ülke
@@ -44,7 +44,7 @@ export default function App() {
     };
   }, []);
 
-  // Mesajlar güncellendiğinde en son mesaja otomatik olarak kaydırma yapar.
+  // Mesajlar güncellendiğinde en son mesaja otomatik olarak kaydirma yapar.
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -53,12 +53,12 @@ export default function App() {
     scrollToBottom();
   }, [messages]);
 
-  // Tema değişikliğinde body arka planını günceller.
+  // Tema değişikliğinde body arka planini günceller.
   useEffect(() => {
     document.body.className = isDarkMode ? 'bg-gray-950' : 'bg-gray-50';
   }, [isDarkMode]);
 
-  // Dark/Light modu arasında geçiş yapar.
+  // Dark/Light modu arasinda geçiş yapar.
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
   };
@@ -87,7 +87,7 @@ export default function App() {
     setChatIdCounter((prevCounter) => prevCounter + 1);
   };
 
-  // Sohbet başlığını düzenleme işlevi
+  // Sohbet başliğini düzenleme işlevi
   const handleTitleEdit = (e) => {
     setCurrentChatTitle(e.target.value);
   };
@@ -119,7 +119,7 @@ export default function App() {
     }
   };
 
-  // Sol paneldeki sohbet adını düzenleme işlevi
+  // Sol paneldeki sohbet adini düzenleme işlevi
   const handleLeftPanelTitleEdit = (chatId, newTitle) => {
     setChatHistory(prevHistory => prevHistory.map(chat =>
       chat.id === chatId ? { ...chat, title: newTitle } : chat
@@ -137,50 +137,50 @@ export default function App() {
     }
   };
 
-  // Modelden gelecek örnek yanıt için yapılandırılmış bir veri döndürür.
+  // Modelden gelecek örnek yanit için yapilandirilmiş bir veri döndürür.
   const getDummyResponse = (product) => {
     const lowerCaseProduct = product.toLowerCase();
     const responses = {
-      'zeytinyağı': {
-        recommendation: `"Zeytinyağı" için en uygun potansiyel barındıran ülkeler:`,
-        hsCodeInfo: `NLP analizi sonucunda ürününüz için en olası HS Kodu: 1509.`,
+      'zeytinyaği': {
+        recommendation: `"Zeytinyaği" için en uygun potansiyel barindiran ülkeler:`,
+        hsCodeInfo: `NLP analizi sonucunda ürününüz için en olasi HS Kodu: 1509.`,
         countries: [
           { name: 'Germany', volume: 150000000, reason: 'Yüksek talep ve Türkiye\'den düşük rekabet.' },
           { name: 'France', volume: 120000000, reason: 'Büyük pazar ve güçlü ticaret ilişkileri.' },
           { name: 'Japan', volume: 90000000, reason: 'Yüksek kaliteye verilen önem ve artan talep.' },
         ],
-        reason: `Önerilen ülkeler, yüksek ithalat hacmine sahip olmalarına rağmen, sizin gibi yeni bir ihracatçı için düşük rekabet avantajı sunmaktadır.`,
+        reason: `Önerilen ülkeler, yüksek ithalat hacmine sahip olmalarina rağmen, sizin gibi yeni bir ihracatçi için düşük rekabet avantaji sunmaktadir.`,
       },
       'güneş paneli': {
-        recommendation: `"Güneş Paneli" için en uygun potansiyel barındıran ülkeler:`,
-        hsCodeInfo: `NLP analizi sonucunda ürününüz için en olası HS Kodu: 8541.40.`,
+        recommendation: `"Güneş Paneli" için en uygun potansiyel barindiran ülkeler:`,
+        hsCodeInfo: `NLP analizi sonucunda ürününüz için en olasi HS Kodu: 8541.40.`,
         countries: [
-          { name: 'United States of America', volume: 3000000000, reason: 'Yenilenebilir enerji yatırımları ve teşvikler.' },
+          { name: 'United States of America', volume: 3000000000, reason: 'Yenilenebilir enerji yatirimlari ve teşvikler.' },
           { name: 'Australia', volume: 1500000000, reason: 'Yüksek güneşlenme süresi ve evsel talep.' },
           { name: 'Brazil', volume: 800000000, reason: 'Devlet destekleri ve gelişmekte olan pazar.' },
         ],
-        reason: `Bu ülkeler, yenilenebilir enerjiye olan küresel talebin hızla artması nedeniyle yüksek büyüme potansiyeline sahiptir.`,
+        reason: `Bu ülkeler, yenilenebilir enerjiye olan küresel talebin hizla artmasi nedeniyle yüksek büyüme potansiyeline sahiptir.`,
       },
       'tekstil': {
-        recommendation: `"Tekstil Sektörü" için en uygun potansiyel barındıran ülkeler:`,
+        recommendation: `"Tekstil Sektörü" için en uygun potansiyel barindiran ülkeler:`,
         hsCodeInfo: `Sektör geniş olduğu için birden fazla HS Kodu olabilir.`,
         countries: [
-          { name: 'Spain', volume: 2000000000, reason: 'Hızlı moda endüstrisi ve güçlü perakende pazarı.' },
-          { name: 'United Kingdom', volume: 1800000000, reason: 'Marka sadakati ve e-ticaretin yaygınlığı.' },
+          { name: 'Spain', volume: 2000000000, reason: 'Hizli moda endüstrisi ve güçlü perakende pazari.' },
+          { name: 'United Kingdom', volume: 1800000000, reason: 'Marka sadakati ve e-ticaretin yayginliği.' },
           { name: 'Netherlands', volume: 1000000000, reason: 'Tekstil ticaretinde önemli bir merkez konumu.' },
         ],
-        reason: `Bu ülkelerde Türk tekstil ürünlerine karşı yüksek talep ve olumlu algı bulunmaktadır.`,
+        reason: `Bu ülkelerde Türk tekstil ürünlerine karşi yüksek talep ve olumlu algi bulunmaktadir.`,
       }
     };
     const dummyResponse = responses[lowerCaseProduct] || {
-      recommendation: `"${product}" için en çok potansiyel barındıran ülkeler:`,
+      recommendation: `"${product}" için en çok potansiyel barindiran ülkeler:`,
       hsCodeInfo: `NLP analizi devam ediyor...`,
       countries: [
         { name: 'Germany', volume: 150000000, reason: 'Yüksek talep ve az yerel üretim.' },
         { name: 'France', volume: 120000000, reason: 'Büyük pazar ve güçlü ticaret ilişkileri.' },
         { name: 'Sweden', volume: 80000000, reason: 'Yüksek büyüme potansiyeli ve yenilikçi pazar.' },
       ],
-      reason: `Önerdiğimiz ülkeler, yüksek ithalat hacmine sahip olmalarına rağmen, sizin gibi yeni bir ihracatçı için düşük rekabet avantajı sunmaktadır.`,
+      reason: `Önerdiğimiz ülkeler, yüksek ithalat hacmine sahip olmalarina rağmen, sizin gibi yeni bir ihracatçi için düşük rekabet avantaji sunmaktadir.`,
     };
     dummyResponse.chartData = dummyResponse.countries.map(c => ({
       country: c.name,
@@ -221,7 +221,7 @@ export default function App() {
       });
 
       if (!response.ok) {
-        throw new Error(`API hatası: ${response.status} ${response.statusText}`);
+        throw new Error(`API hatasi: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -239,7 +239,7 @@ export default function App() {
       const errorResponse = {
         id: `bot-error-${Date.now()}`,
         sender: 'bot',
-        text: `Üzgünüm, bir hata oluştu: ${error.message}. Lütfen backend sunucunun çalıştığından emin ol.`,
+        text: `Üzgünüm, bir hata oluştu: ${error.message}. Lütfen backend sunucunun çaliştiğindan emin ol.`,
       };
       setMessages((prevMessages) => [...prevMessages, errorResponse]);
     } finally {
@@ -260,8 +260,8 @@ export default function App() {
     e.preventDefault();
     setIsLoadingPrediction(true);
   
-    // Gönderilecek veriyi hazırlama
-    // Eksik alanlar için varsayılan değerler atıyoruz
+    // Gönderilecek veriyi hazirlama
+    // Eksik alanlar için varsayilan değerler atiyoruz
     const dataForPrediction = {
       product_name_clean: predictionFormData.product_name_clean || null,
       category: predictionFormData.category || null,
@@ -269,13 +269,13 @@ export default function App() {
       country: predictionFormData.country || null,
       shipping_cost: parseFloat(predictionFormData.shipping_cost) || 0, // Kargo ücreti girilmezse 0
       
-      // Diğer alanları varsayılan olarak gönderiyoruz
+      // Diğer alanlari varsayilan olarak gönderiyoruz
       city: null, // Şehir bilgisi zorunlu değil
-      seller: null, // Satıcı bilgisi zorunlu değil
-      stock: 100, // Varsayılan stok değeri
-      platform: "E-commerce", // Varsayılan platform
-      country_clean: predictionFormData.country || null, // Backendde temizlenecekse burası null kalabilir
-      category_clean: predictionFormData.category || null, // Backendde temizlenecekse burası null kalabilir
+      seller: null, // Satici bilgisi zorunlu değil
+      stock: 100, // Varsayilan stok değeri
+      platform: "E-commerce", // Varsayilan platform
+      country_clean: predictionFormData.country || null, // Backendde temizlenecekse burasi null kalabilir
+      category_clean: predictionFormData.category || null, // Backendde temizlenecekse burasi null kalabilir
       month: new Date().getMonth() + 1, // Mevcut ay
     };
   
@@ -289,21 +289,21 @@ export default function App() {
       });
   
       if (!response.ok) {
-        throw new Error(`API hatası: ${response.status} ${response.statusText}`);
+        throw new Error(`API hatasi: ${response.status} ${response.statusText}`);
       }
   
-      const data = await response.json(); // Backend'den gelen tüm yanıtı alıyoruz
-      const predictedPrice = data.response.predicted_price; // Fiyatı alıyoruz
-      const recommendationData = data.response.recommendation_data; // Ülke önerilerini alıyoruz
+      const data = await response.json(); // Backend'den gelen tüm yaniti aliyoruz
+      const predictedPrice = data.response.predicted_price; // Fiyati aliyoruz
+      const recommendationData = data.response.recommendation_data; // Ülke önerilerini aliyoruz
       
       // Tahmin ve önerileri bir arada gösteren bir mesaj oluşturuyoruz
       const predictionMessage = {
         id: `bot-prediction-${Date.now()}`,
         sender: 'bot',
-        // Hem fiyatı hem de ülke önerilerini içeren bir obje olarak gönderiyoruz
+        // Hem fiyati hem de ülke önerilerini içeren bir obje olarak gönderiyoruz
         text: {
           predictedPrice: predictedPrice,
-          ...recommendationData // recommendationData'nın içeriğini doğrudan text objesine yayıyoruz
+          ...recommendationData // recommendationData'nin içeriğini doğrudan text objesine yayiyoruz
         },
       };
       setMessages((prevMessages) => [...prevMessages, predictionMessage]);
@@ -314,11 +314,11 @@ export default function App() {
       });
   
     } catch (error) {
-      console.error('Tahmin yapılırken bir hata oluştu:', error);
+      console.error('Tahmin yapilirken bir hata oluştu:', error);
       const errorMessage = {
         id: `bot-error-pred-${Date.now()}`,
         sender: 'bot',
-        text: `Üzgünüm, fiyat tahmini yapılamadı. Hata: ${error.message}`,
+        text: `Üzgünüm, fiyat tahmini yapilamadi. Hata: ${error.message}`,
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
@@ -327,9 +327,7 @@ export default function App() {
   };
 
 
-  // Botun zengin yanıtını görselleştiren bileşen
   const renderRichResponse = (response) => {
-    // Eğer yanıt ML tahmini ve ülke önerilerini içeriyorsa
     if (response.predictedPrice !== undefined && response.recommendation !== undefined) {
       return (
         <div className={`flex flex-col p-4 rounded-lg shadow-md space-y-4 transition-colors duration-300 ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-white text-gray-800'}`}>
@@ -363,7 +361,7 @@ export default function App() {
                   strokeWidth="0.5"
                   strokeLinejoin="round"
                 >
-                  {/* Basit SVG Yolları - Gerçek dünya haritası için daha karmaşık veri gerekir */}
+                  {/* Basit SVG Yollari - Gerçek dünya haritasi için daha karmaşik veri gerekir */}
                   {/* Almanya */} <path d="M480 200 L490 205 L495 200 L480 190 Z" fill={response.countries.some(c => c.name === 'Almanya') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
                   {/* ABD */} <path d="M100 200 L150 220 L160 210 L110 190 Z" fill={response.countries.some(c => c.name === 'ABD') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
                   {/* İngiltere */} <path d="M440 180 L450 185 L460 180 L455 175 Z" fill={response.countries.some(c => c.name === 'İngiltere') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
@@ -386,9 +384,9 @@ export default function App() {
                   <path
                     key={country.name}
                     id={country.name}
-                    // Düzeltme: Burada d="" yerine, yukarıdaki path'lerden ilgili ülkenin d değerini almalıyız.
-                    // Bu örnekte, SVG path'leri manuel olarak yukarıdaki g grubuna eklendi ve fill özelliği koşullu hale getirildi.
-                    // Dinamik olarak path oluşturmak daha karmaşıktır ve harita kütüphanesi gerektirir.
+                    // Düzeltme: Burada d="" yerine, yukaridaki path'lerden ilgili ülkenin d değerini almaliyiz.
+                    // Bu örnekte, SVG path'leri manuel olarak yukaridaki g grubuna eklendi ve fill özelliği koşullu hale getirildi.
+                    // Dinamik olarak path oluşturmak daha karmaşiktir ve harita kütüphanesi gerektirir.
                   />
                 ))}
               </svg>
@@ -421,7 +419,7 @@ export default function App() {
               <div className="space-y-2">
                 <h5 className={`flex items-center font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
                   <BarChart className="w-4 h-4 mr-2 text-pink-500" />
-                  Detaylı İthalat Verileri
+                  Detayli İthalat Verileri
                 </h5>
                 <div className={`overflow-x-auto rounded-lg shadow-sm ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
                   <table className="min-w-full divide-y divide-gray-200 table-auto">
@@ -460,19 +458,16 @@ export default function App() {
         </div>
       );
     } 
-    // Eğer yanıt sadece metin ise (normal chatbot yanıtı)
     else if (typeof response === 'string') {
-      const lines = response.split('\n'); // Her satırı ayrı ayrı al
+      const lines = response.split('\n'); 
 
       let currentList = [];
       const renderedContent = [];
 
       lines.forEach((line, index) => {
-        // Madde işareti kontrolü: * veya - ile başlayan satırlar
         if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
-          currentList.push(line.trim().substring(2).trim()); // Madde işaretini kaldır
+          currentList.push(line.trim().substring(2).trim()); 
         } else {
-          // Eğer bir liste varsa ve yeni bir paragraf başlıyorsa, listeyi render et
           if (currentList.length > 0) {
             renderedContent.push(
               <ul key={`list-${index}`} className="list-disc list-inside space-y-1 ml-4 text-sm">
@@ -483,9 +478,8 @@ export default function App() {
                 ))}
               </ul>
             );
-            currentList = []; // Listeyi sıfırla
+            currentList = []; 
           }
-          // Boş satırları atla veya paragraf olarak ekle
           if (line.trim() !== '') {
             renderedContent.push(
               <p key={`para-${index}`} className={`text-sm leading-relaxed ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
@@ -496,7 +490,6 @@ export default function App() {
         }
       });
 
-      // Döngü bittikten sonra kalan bir liste varsa onu da render et
       if (currentList.length > 0) {
         renderedContent.push(
           <ul key={`final-list`} className="list-disc list-inside space-y-1 ml-4 text-sm">
@@ -515,7 +508,6 @@ export default function App() {
         </div>
       );
     }
-    // Varsayılan olarak boş döndür
     return null;
   };
 
@@ -681,7 +673,7 @@ export default function App() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  <span className="text-sm">Yanıt hazırlanıyor...</span>
+                  <span className="text-sm">Yanit hazirlaniyor...</span>
                 </div>
               </div>
             )}
@@ -713,13 +705,13 @@ export default function App() {
           {/* Yeni eklenen ML Tahmin Formu */}
           <div className={`p-4 border-t transition-colors duration-300 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
               <h3 className={`text-lg font-semibold mb-3 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                Ürün Fiyatı Tahmini
+                Ürün Fiyati Tahmini
               </h3>
               <form onSubmit={handlePredictSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input 
                       type="text" 
                       name="product_name_clean"
-                      placeholder="Ürün Adı (örn: Ahşap Oyuncak Araba)" 
+                      placeholder="Ürün Adi (örn: Ahşap Oyuncak Araba)" 
                       value={predictionFormData.product_name_clean}
                       onChange={handlePredictionInputChange}
                       className={`p-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
@@ -773,7 +765,7 @@ export default function App() {
                       disabled={isLoadingPrediction}
                   >
                       <Sparkles className="w-5 h-5 mr-2" />
-                      <span>{isLoadingPrediction ? 'Tahmin Ediliyor...' : 'Fiyatı Tahmin Et'}</span>
+                      <span>{isLoadingPrediction ? 'Tahmin Ediliyor...' : 'Fiyati Tahmin Et'}</span>
                   </button>
               </form>
           </div>
@@ -785,7 +777,7 @@ export default function App() {
                 <input
                   type="text"
                   className={`flex-grow p-3 border rounded-full text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
-                  placeholder="İhracat yapmak istediğiniz ürün adını girin..."
+                  placeholder="İhracat yapmak istediğiniz ürün adini girin..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                 />
