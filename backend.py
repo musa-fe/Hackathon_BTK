@@ -6,11 +6,13 @@ import joblib
 import json
 import pandas as pd
 from pathlib import Path
+from flask_cors import CORS
 
 # --------------------------
 # 1) Uygulama Başlat
 # --------------------------
 app = Flask(__name__)
+CORS(app)
 
 # --------------------------
 # 2) Gemini Chatbot Ayarı
@@ -48,41 +50,35 @@ def prepare_dataframe(data: dict):
 # --------------------------
 # 5) Chatbot API
 # --------------------------
-# ...existing code...
-
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
     message = data.get("message", "")
+
+    # Eğer kullanıcı ürün bilgilerini göndermişse (kategori, ülke vs.)
+    if any(key in data for key in feature_cols):
+        try:
+            df_input = prepare_dataframe(data)
+            prediction = model.predict(df_input)
+            return jsonify({"response": f"Tahmini fiyat: {float(prediction[0]):.2f} $"})
+        except Exception as e:
+            return jsonify({"response": f"ML tahmini yapılamadı: {str(e)}"})
+
+    # Eğer sadece normal sohbet mesajı varsa
     if not message.strip():
         return jsonify({"response": "Mesaj boş."})
 
-    # Basit anahtar kelime kontrolü (örnek)
-    urun_anahtar_kelimeler = ["ürün", "fiyat", "tahmin", "export", "ihraç", "kategori"]
-    if any(kelime in message.lower() for kelime in urun_anahtar_kelimeler):
-        # Burada örnek olarak sabit veriyle ML tahmini yapılıyor
-        try:
-            input_data = {"category": "Electronics", "price": 100}
-            df_input = prepare_dataframe(input_data)
-            prediction = model.predict(df_input)
-            return jsonify({
-                "response": f"Bu ürün için tahmini fiyat: {float(prediction[0]):.2f} $"
-            })
-        except Exception as e:
-            return jsonify({"response": f"ML tahmini yapılamadı: {str(e)}"})
-    else:
-        # Normal sohbet
-        response = gemini_model.generate_content(message)
-        return jsonify({"response": response.text})
+    response = gemini_model.generate_content(message)
+    return jsonify({"response": response.text})
 
-# ...existing code...
+
 # --------------------------
 # 6) ML Prediction API
 # --------------------------
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        data = request.get_json()  # Örnek: {"category": "Electronics", "price": 100, ...}
+        data = request.get_json()
         df_input = prepare_dataframe(data)
         prediction = model.predict(df_input)
         return jsonify({"predicted_price": float(prediction[0])})
