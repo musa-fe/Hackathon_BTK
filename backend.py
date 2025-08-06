@@ -33,7 +33,7 @@ gemini_model = genai.GenerativeModel("models/gemini-2.5-pro")
 # --------------------------
 # 3) ML Modelini Yükle
 # --------------------------
-# Sizin orijinal dosya yolu tanımlamalarınızı koruyoruz
+# Sizin orijinal dosya yolu tanımlamalarını koruyoruz
 MODEL_PATH = "model/model.joblib"
 FEATURES_PATH = "model/feature_columns.json"
 
@@ -146,10 +146,8 @@ def get_chatbot_response_based_on_state(session_id, user_message):
     
     return response
 
-# Zenginleştirilmiş yanıtı oluşturan fonksiyonlar
+# Zenginleştirilmiş yanıtı oluşturan fonksiyonlar (chatbot için)
 def create_rich_response_for_toys(data):
-    # Bu fonksiyon, sohbet botundan gelen veriye göre özel bir yanıt oluşturur
-    # Örneğin, 'ahşap' ve 'Montessori' için özel veriler
     return {
         "recommendation": f"Ahşap ve {data.get('philosophy', 'eğitici')} oyuncaklarınız için en uygun potansiyel barındıran ülkeler:",
         "hsCodeInfo": "NLP analizi sonucunda ürününüz için en olası HS Kodu: 9503.00 (Oyuncaklar).",
@@ -162,7 +160,6 @@ def create_rich_response_for_toys(data):
     }
 
 def create_rich_response_for_plastic_toys(data):
-    # Plastik oyuncaklar için farklı bir yanıt
     return {
         "recommendation": "Plastik oyuncaklarınız için en uygun potansiyel barındıran ülkeler:",
         "hsCodeInfo": "NLP analizi sonucunda ürününüz için en olası HS Kodu: 9503.00 (Oyuncaklar).",
@@ -175,7 +172,6 @@ def create_rich_response_for_plastic_toys(data):
     }
 
 def create_rich_response_for_fabric_toys(data):
-    # Kumaş oyuncaklar için farklı bir yanıt
     return {
         "recommendation": "Kumaş oyuncaklarınız için en uygun potansiyel barındıran ülkeler:",
         "hsCodeInfo": "NLP analizi sonucunda ürününüz için en olası HS Kodu: 9503.00 (Oyuncaklar).",
@@ -187,6 +183,49 @@ def create_rich_response_for_fabric_toys(data):
         "reason": "Bu ülkeler, yumuşak ve güvenli kumaş oyuncaklara özel ilgi duyan pazarlardır.",
     }
 
+# Yeni fonksiyon: Tahmin verisine göre ülke önerisi oluşturma
+def get_country_recommendations_for_prediction(product_data):
+    category = product_data.get('category', '').lower()
+    product_name = product_data.get('product_name_clean', '').lower()
+
+    if "oyuncak" in category or "toys" in product_name:
+        # Oyuncaklar için genel öneriler (daha spesifik hale getirilebilir)
+        return {
+            "recommendation": f"'{product_data.get('product_name_clean', 'Ürün')}' için potansiyel barındıran ülkeler:",
+            "hsCodeInfo": "Tahmini HS Kodu: 9503.00 (Oyuncaklar).",
+            "countries": [
+                {"name": "ABD", "volume": 100000000, "reason": "Büyük pazar ve çeşitli tüketici kitlesi."},
+                {"name": "Almanya", "volume": 70000000, "reason": "Kaliteye önem veren bilinçli ebeveynler."},
+                {"name": "Japonya", "volume": 40000000, "reason": "Benzersiz ve eğitici oyuncaklara ilgi."},
+            ],
+            "reason": "Bu ülkeler, genel olarak oyuncak ithalatında yüksek hacme sahiptir ve çeşitli niş pazarlar sunar.",
+        }
+    elif "elektronik" in category:
+        return {
+            "recommendation": f"'{product_data.get('product_name_clean', 'Ürün')}' için potansiyel barındıran ülkeler:",
+            "hsCodeInfo": "Tahmini HS Kodu: 8500.00 (Elektronik Cihazlar).",
+            "countries": [
+                {"name": "Çin", "volume": 500000000, "reason": "Üretim ve tüketim merkezi."},
+                {"name": "ABD", "volume": 300000000, "reason": "Yüksek teknoloji benimseme oranı."},
+                {"name": "Hollanda", "volume": 100000000, "reason": "Avrupa'ya dağıtım merkezi."},
+            ],
+            "reason": "Elektronik ürünler için küresel talep yüksek olan pazarlardır.",
+        }
+    # Daha fazla kategori ve ürün bazlı kural eklenebilir
+    else:
+        # Varsayılan genel öneriler
+        return {
+            "recommendation": f"'{product_data.get('product_name_clean', 'Ürün')}' için genel potansiyel barındıran ülkeler:",
+            "hsCodeInfo": "HS Kodu tahmini için daha fazla bilgiye ihtiyaç var.",
+            "countries": [
+                {"name": "Almanya", "volume": 150000000, "reason": "Avrupa'nın en büyük ekonomisi ve ithalatçısı."},
+                {"name": "ABD", "volume": 200000000, "reason": "Dünyanın en büyük pazarı, yüksek alım gücü."},
+                {"name": "Kanada", "volume": 80000000, "reason": "ABD ile güçlü ticaret ilişkileri, istikrarlı pazar."},
+            ],
+            "reason": "Bu ülkeler, çoğu ürün kategorisi için genel olarak yüksek ithalat potansiyeli sunar.",
+        }
+
+
 # --------------------------
 # 5) Chatbot API
 # --------------------------
@@ -195,10 +234,6 @@ def chat():
     data = request.get_json()
     message = data.get("message", "")
     session_id = request.remote_addr # Basit bir session_id olarak IP adresini kullandık. Daha güvenlisi JWT olabilir.
-
-    # Eğer kullanıcı ürün bilgilerini göndermişse (kategori, ülke vs.) - Bu kısım artık /predict rotasında işleniyor
-    # Bu if bloğu kaldırıldı veya sadece Gemini chatbot için kullanılıyor.
-    # ML tahmini için ayrı bir rota (/predict) olması daha temiz bir mimari sağlar.
 
     if not message.strip():
         return jsonify({"response": "Mesaj boş."})
@@ -220,8 +255,20 @@ def predict():
         df_input = prepare_dataframe(data)
         prediction = model.predict(df_input)
         
-        logging.info(f"Tahmin sonucu: {prediction[0]}")
-        return jsonify({"predicted_price": float(prediction[0])})
+        predicted_price = float(prediction[0])
+        
+        # Ülke önerilerini al
+        country_recommendations = get_country_recommendations_for_prediction(data)
+        
+        # Yanıtı hem tahmin fiyatını hem de ülke önerilerini içerecek şekilde birleştir
+        # Frontend'deki renderRichResponse'un beklediği formatta bir obje döndürüyoruz
+        full_response = {
+            "predicted_price": predicted_price,
+            "recommendation_data": country_recommendations # Ülke önerilerini bu anahtar altında gönderiyoruz
+        }
+        
+        logging.info(f"Tahmin ve Öneri sonucu: {full_response}")
+        return jsonify({"response": full_response}) # 'response' anahtarı altında tüm objeyi gönderiyoruz
     except Exception as e:
         logging.error(f"ML tahmini yapılamadı: {e}")
         return jsonify({"error": str(e)}), 400

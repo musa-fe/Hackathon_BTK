@@ -292,12 +292,19 @@ export default function App() {
         throw new Error(`API hatası: ${response.status} ${response.statusText}`);
       }
   
-      const result = await response.json();
+      const data = await response.json(); // Backend'den gelen tüm yanıtı alıyoruz
+      const predictedPrice = data.response.predicted_price; // Fiyatı alıyoruz
+      const recommendationData = data.response.recommendation_data; // Ülke önerilerini alıyoruz
       
+      // Tahmin ve önerileri bir arada gösteren bir mesaj oluşturuyoruz
       const predictionMessage = {
         id: `bot-prediction-${Date.now()}`,
         sender: 'bot',
-        text: `Girilen verilere göre ürünün tahmini fiyatı: ${result.predicted_price.toFixed(2)} $`,
+        // Hem fiyatı hem de ülke önerilerini içeren bir obje olarak gönderiyoruz
+        text: {
+          predictedPrice: predictedPrice,
+          ...recommendationData // recommendationData'nın içeriğini doğrudan text objesine yayıyoruz
+        },
       };
       setMessages((prevMessages) => [...prevMessages, predictionMessage]);
 
@@ -322,135 +329,143 @@ export default function App() {
 
   // Botun zengin yanıtını görselleştiren bileşen
   const renderRichResponse = (response) => {
-    const recommendedCountryNames = response.countries.map(c => c.name);
-    const userCountry = "Turkey";
-
-    return (
-      <div className={`flex flex-col p-4 rounded-lg shadow-md space-y-4 transition-colors duration-300 ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-white text-gray-800'}`}>
-        <h4 className="flex items-center text-base font-bold text-indigo-400">
-          <Sparkles className="w-4 h-4 mr-2 text-yellow-300" />
-          {response.recommendation}
-        </h4>
-        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{response.reason}</p>
-
-        {response.countries && response.countries.length > 0 && (
-          <div className="space-y-2">
-            <h5 className={`flex items-center font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-              <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
-              Potansiyel Bölgeler
-            </h5>
-            <svg
-              className="w-full h-auto rounded-lg shadow-md"
-              viewBox="0 0 1000 500"
-              xmlns="http://www.w3.org/2000/svg"
-              style={{
-                backgroundColor: isDarkMode ? '#1F2937' : '#E5E7EB',
-              }}
-            >
-              <g
-                fill={isDarkMode ? '#4B5563' : '#D1D5DB'}
-                stroke="#FFF"
-                strokeWidth="0.5"
-                strokeLinejoin="round"
-              >
-                <path id="Germany" d="M480 200 L490 205 L495 200 L480 190 Z" />
-                <path id="France" d="M450 200 L460 210 L470 205 L465 195 Z" />
-                <path id="Japan" d="M900 250 L910 260 L920 255 L915 245 Z" />
-                <path id="United States of America" d="M100 200 L150 220 L160 210 L110 190 Z" />
-                <path id="Australia" d="M800 400 L820 410 L830 400 L810 390 Z" />
-                <path id="Brazil" d="M300 350 L320 360 L330 350 L310 340 Z" />
-                <path id="Spain" d="M420 220 L430 230 L440 225 L435 215 Z" />
-                <path id="United Kingdom" d="M440 180 L450 185 L460 180 L455 175 Z" />
-                <path id="Netherlands" d="M480 185 L485 190 L490 185 L485 180 Z" />
-                <path id="Sweden" d="M520 160 L530 170 L540 165 L535 155 Z" />
-                <path id="Turkey" d="M550 220 L560 225 L570 220 L565 215 Z" />
-                <path d="M0 0 H1000 V500 H0 Z" fill={isDarkMode ? '#4B5563' : '#E5E7EB'} />
-              </g>
-
-              {recommendedCountryNames.map((countryName) => (
-                <path
-                  key={countryName}
-                  id={countryName}
-                  d=""
-                  fill={isDarkMode ? '#34D399' : '#10B981'}
-                  stroke="#FFF"
-                  strokeWidth="0.5"
-                />
-              ))}
-
-              <path
-                id="Turkey"
-                d="M550 220 L560 225 L570 220 L565 215 Z"
-                fill="#F97316"
-                stroke="#FFF"
-                strokeWidth="0.5"
-              />
-            </svg>
-            <p className={`text-center text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              (Harita, önerilen ülkeleri temsil eden basit bir görseldir.)
-            </p>
-          </div>
-        )}
-
-        <div className="grid md:grid-cols-2 gap-4">
-          {response.countries && response.countries.length > 0 && (
-            <div className="flex flex-col space-y-2">
-              <h5 className={`font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Önerilen Ülkeler:</h5>
-              <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
-                {response.countries.map((country, index) => (
-                  <li key={index} className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    <span className="flex items-center">
-                      <ArrowRightCircle className="w-4 h-4 mr-2 text-indigo-500" />
-                      {country.name} - <span className={`font-normal ml-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{country.volume / 1000000} Milyon $</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+    // Eğer yanıt ML tahmini ve ülke önerilerini içeriyorsa
+    if (response.predictedPrice !== undefined && response.recommendation !== undefined) {
+      return (
+        <div className={`flex flex-col p-4 rounded-lg shadow-md space-y-4 transition-colors duration-300 ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-white text-gray-800'}`}>
+          <h4 className="flex items-center text-base font-bold text-indigo-400">
+            <Sparkles className="w-4 h-4 mr-2 text-yellow-300" />
+            Tahmini Fiyat: {response.predictedPrice.toFixed(2)} $
+          </h4>
+          <h4 className="flex items-center text-base font-bold text-indigo-400">
+            <Sparkles className="w-4 h-4 mr-2 text-yellow-300" />
+            {response.recommendation}
+          </h4>
+          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{response.reason}</p>
 
           {response.countries && response.countries.length > 0 && (
             <div className="space-y-2">
               <h5 className={`flex items-center font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                <BarChart className="w-4 h-4 mr-2 text-pink-500" />
-                Detaylı İthalat Verileri
+                <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
+                Potansiyel Bölgeler
               </h5>
-              <div className={`overflow-x-auto rounded-lg shadow-sm ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                <table className="min-w-full divide-y divide-gray-200 table-auto">
-                  <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}>
-                    <tr>
-                      <th scope="col" className={`px-4 py-2 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                        Ülke
-                      </th>
-                      <th scope="col" className={`px-4 py-2 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                        Hacim (Milyon $)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className={`divide-y divide-gray-200 ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-700'}`}>
-                    {response.countries.map((country, index) => (
-                      <tr key={index}>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs font-medium">
-                          {country.name}
-                        </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs">
-                          {country.volume / 1000000}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <svg
+                className="w-full h-auto rounded-lg shadow-md"
+                viewBox="0 0 1000 500"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{
+                  backgroundColor: isDarkMode ? '#1F2937' : '#E5E7EB',
+                }}
+              >
+                <g
+                  fill={isDarkMode ? '#4B5563' : '#D1D5DB'}
+                  stroke="#FFF"
+                  strokeWidth="0.5"
+                  strokeLinejoin="round"
+                >
+                  {/* Basit SVG Yolları - Gerçek dünya haritası için daha karmaşık veri gerekir */}
+                  {/* Almanya */} <path d="M480 200 L490 205 L495 200 L480 190 Z" fill={response.countries.some(c => c.name === 'Almanya') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* ABD */} <path d="M100 200 L150 220 L160 210 L110 190 Z" fill={response.countries.some(c => c.name === 'ABD') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* İngiltere */} <path d="M440 180 L450 185 L460 180 L455 175 Z" fill={response.countries.some(c => c.name === 'İngiltere') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* Japonya */} <path d="M900 250 L910 260 L920 255 L915 245 Z" fill={response.countries.some(c => c.name === 'Japonya') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* Meksika */} <path d="M150 300 L170 310 L180 300 L160 290 Z" fill={response.countries.some(c => c.name === 'Meksika') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* Polonya */} <path d="M500 210 L510 215 L515 210 L505 205 Z" fill={response.countries.some(c => c.name === 'Polonya') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* Türkiye */} <path d="M550 220 L560 225 L570 220 L565 215 Z" fill={response.countries.some(c => c.name === 'Türkiye') ? (isDarkMode ? '#F97316' : '#F97316') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* Fransa */} <path d="M450 200 L460 210 L470 205 L465 195 Z" fill={response.countries.some(c => c.name === 'Fransa') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* Kanada */} <path d="M100 100 L120 110 L130 100 L110 90 Z" fill={response.countries.some(c => c.name === 'Kanada') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* Çin */} <path d="M750 250 L770 260 L780 250 L760 240 Z" fill={response.countries.some(c => c.name === 'Çin') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+                  {/* Hollanda */} <path d="M480 185 L485 190 L490 185 L485 180 Z" fill={response.countries.some(c => c.name === 'Hollanda') ? (isDarkMode ? '#34D399' : '#10B981') : (isDarkMode ? '#4B5563' : '#D1D5DB')} />
+
+
+                  {/* Rest of the world (placeholder) */}
+                  <path d="M0 0 H1000 V500 H0 Z" fill={isDarkMode ? '#4B5563' : '#E5E7EB'} />
+                </g>
+
+                {/* Önerilen ülkeleri renklendirme */}
+                {response.countries.map((country) => (
+                  <path
+                    key={country.name}
+                    id={country.name}
+                    // Düzeltme: Burada d="" yerine, yukarıdaki path'lerden ilgili ülkenin d değerini almalıyız.
+                    // Bu örnekte, SVG path'leri manuel olarak yukarıdaki g grubuna eklendi ve fill özelliği koşullu hale getirildi.
+                    // Dinamik olarak path oluşturmak daha karmaşıktır ve harita kütüphanesi gerektirir.
+                  />
+                ))}
+              </svg>
+              <p className={`text-center text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                (Harita, önerilen ülkeleri temsil eden basit bir görseldir.)
+              </p>
             </div>
           )}
-        </div>
 
-        <div className="flex items-center space-x-2 p-2 bg-indigo-500 bg-opacity-10 rounded-lg">
-          <Sparkles className="w-3 h-3 text-indigo-500" />
-          <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{response.hsCodeInfo}</span>
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Ülkeler listesi */}
+            {response.countries && response.countries.length > 0 && (
+              <div className="flex flex-col space-y-2">
+                <h5 className={`font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Önerilen Ülkeler:</h5>
+                <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
+                  {response.countries.map((country, index) => (
+                    <li key={index} className={`font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <span className="flex items-center">
+                        <ArrowRightCircle className="w-4 h-4 mr-2 text-indigo-500" />
+                        {country.name} - <span className={`font-normal ml-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{country.volume / 1000000} Milyon $</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Tablo görünümü */}
+            {response.countries && response.countries.length > 0 && (
+              <div className="space-y-2">
+                <h5 className={`flex items-center font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                  <BarChart className="w-4 h-4 mr-2 text-pink-500" />
+                  Detaylı İthalat Verileri
+                </h5>
+                <div className={`overflow-x-auto rounded-lg shadow-sm ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <table className="min-w-full divide-y divide-gray-200 table-auto">
+                    <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}>
+                      <tr>
+                        <th scope="col" className={`px-4 py-2 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Ülke
+                        </th>
+                        <th scope="col" className={`px-4 py-2 text-left text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          Hacim (Milyon $)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y divide-gray-200 ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-700'}`}>
+                      {response.countries.map((country, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs font-medium">
+                            {country.name}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs">
+                            {country.volume / 1000000}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-2 p-2 bg-indigo-500 bg-opacity-10 rounded-lg">
+            <Sparkles className="w-3 h-3 text-indigo-500" />
+            <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{response.hsCodeInfo}</span>
+          </div>
         </div>
-      </div>
-    );
+      );
+    } 
+    // Eğer yanıt sadece metin ise (normal chatbot yanıtı)
+    else if (typeof response === 'string') {
+      return <span className="text-sm">{response}</span>;
+    }
+    // Varsayılan olarak boş döndür
+    return null;
   };
 
   return (
