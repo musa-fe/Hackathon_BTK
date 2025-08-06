@@ -24,19 +24,13 @@ export default function App() {
   
   // Yeni eklenen state'ler
   const [isLoadingPrediction, setIsLoadingPrediction] = useState(false);
+  // Sadece kritik inputları içeren basitleştirilmiş form verisi
   const [predictionFormData, setPredictionFormData] = useState({
-    category: '',
-    brand: '',
-    country: '',
-    city: '',
-    shipping_cost: '',
-    seller: '',
-    stock: '',
-    platform: '',
-    product_name_clean: '',
-    country_clean: '',
-    category_clean: '',
-    month: ''
+    product_name_clean: '', // Ürün Adı
+    category: '',           // Kategori
+    brand: '',              // Marka
+    country: '',            // Hedef Ülke
+    shipping_cost: '',      // Kargo Ücreti (Opsiyonel)
   });
 
   // Google Fonts'u uygulamaya dahil etmek için
@@ -267,19 +261,22 @@ export default function App() {
     setIsLoadingPrediction(true);
   
     // Gönderilecek veriyi hazırlama
+    // Eksik alanlar için varsayılan değerler atıyoruz
     const dataForPrediction = {
-      category: predictionFormData.category,
-      brand: predictionFormData.brand,
-      country: predictionFormData.country,
-      city: predictionFormData.city,
-      shipping_cost: parseFloat(predictionFormData.shipping_cost) || 0,
-      seller: predictionFormData.seller,
-      stock: parseInt(predictionFormData.stock) || 0,
-      platform: predictionFormData.platform,
-      product_name_clean: predictionFormData.product_name_clean,
-      country_clean: predictionFormData.country_clean,
-      category_clean: predictionFormData.category_clean,
-      month: parseInt(predictionFormData.month) || 1,
+      product_name_clean: predictionFormData.product_name_clean || null,
+      category: predictionFormData.category || null,
+      brand: predictionFormData.brand || null,
+      country: predictionFormData.country || null,
+      shipping_cost: parseFloat(predictionFormData.shipping_cost) || 0, // Kargo ücreti girilmezse 0
+      
+      // Diğer alanları varsayılan olarak gönderiyoruz
+      city: null, // Şehir bilgisi zorunlu değil
+      seller: null, // Satıcı bilgisi zorunlu değil
+      stock: 100, // Varsayılan stok değeri
+      platform: "E-commerce", // Varsayılan platform
+      country_clean: predictionFormData.country || null, // Backendde temizlenecekse burası null kalabilir
+      category_clean: predictionFormData.category || null, // Backendde temizlenecekse burası null kalabilir
+      month: new Date().getMonth() + 1, // Mevcut ay
     };
   
     try {
@@ -306,9 +303,7 @@ export default function App() {
 
       // Formu temizle
       setPredictionFormData({
-        category: '', brand: '', country: '', city: '', shipping_cost: '',
-        seller: '', stock: '', platform: '', product_name_clean: '',
-        country_clean: '', category_clean: '', month: ''
+        product_name_clean: '', category: '', brand: '', country: '', shipping_cost: ''
       });
   
     } catch (error) {
@@ -625,7 +620,6 @@ export default function App() {
               </div>
             )}
             
-            {/* Yeni eklenen yüklenme durumu */}
             {isLoadingPrediction && (
                 <div className="flex justify-start animate-fadeIn">
                     <div className={`flex items-center space-x-2 p-3 rounded-xl shadow-sm transition-colors duration-300 ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
@@ -656,17 +650,51 @@ export default function App() {
                 Ürün Fiyatı Tahmini
               </h3>
               <form onSubmit={handlePredictSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.keys(predictionFormData).map(key => (
-                      <input 
-                          key={key}
-                          type={['shipping_cost', 'stock', 'month'].includes(key) ? 'number' : 'text'}
-                          name={key}
-                          placeholder={key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                          value={predictionFormData[key]}
-                          onChange={handlePredictionInputChange}
-                          className={`p-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
-                      />
-                  ))}
+                  <input 
+                      type="text" 
+                      name="product_name_clean"
+                      placeholder="Ürün Adı (örn: Ahşap Oyuncak Araba)" 
+                      value={predictionFormData.product_name_clean}
+                      onChange={handlePredictionInputChange}
+                      className={`p-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
+                      required
+                  />
+                  <input 
+                      type="text" 
+                      name="category"
+                      placeholder="Kategori (örn: Oyuncak)" 
+                      value={predictionFormData.category}
+                      onChange={handlePredictionInputChange}
+                      className={`p-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
+                      required
+                  />
+                  <input 
+                      type="text" 
+                      name="brand"
+                      placeholder="Marka (örn: Bende Toys)" 
+                      value={predictionFormData.brand}
+                      onChange={handlePredictionInputChange}
+                      className={`p-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
+                      required
+                  />
+                  <input 
+                      type="text" 
+                      name="country"
+                      placeholder="Hedef Ülke (örn: Almanya)" 
+                      value={predictionFormData.country}
+                      onChange={handlePredictionInputChange}
+                      className={`p-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
+                      required
+                  />
+                  <input 
+                      type="number" 
+                      name="shipping_cost"
+                      placeholder="Kargo Ücreti (Opsiyonel, örn: 10.5)" 
+                      value={predictionFormData.shipping_cost}
+                      onChange={handlePredictionInputChange}
+                      className={`p-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
+                  />
+
                   <button 
                       type="submit" 
                       className={`col-span-full p-3 rounded-full text-white text-sm font-semibold flex items-center justify-center transition-all duration-300 transform ${
@@ -679,7 +707,7 @@ export default function App() {
                       disabled={isLoadingPrediction}
                   >
                       <Sparkles className="w-5 h-5 mr-2" />
-                      <span>{isLoadingPrediction ? 'Tahmin Ediliyor...' : 'Fiyati Tahmin Et'}</span>
+                      <span>{isLoadingPrediction ? 'Tahmin Ediliyor...' : 'Fiyatı Tahmin Et'}</span>
                   </button>
               </form>
           </div>
@@ -691,7 +719,7 @@ export default function App() {
                 <input
                   type="text"
                   className={`flex-grow p-3 border rounded-full text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
-                  placeholder="İhracat yapmak istediğiniz ürün adini girin..."
+                  placeholder="İhracat yapmak istediğiniz ürün adını girin..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                 />
