@@ -1,0 +1,14 @@
+[
+  "category",
+  "brand",
+  "country",
+  "city",
+  "shipping_cost",
+  "seller",
+  "stock",
+  "platform",
+  "product_name_clean",
+  "country_clean",
+  "category_clean",
+  "month"
+]
