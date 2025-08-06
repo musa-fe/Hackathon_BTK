@@ -18,9 +18,26 @@ export default function App() {
   const [chatIdCounter, setChatIdCounter] = useState(2);
   const [currentChatTitle, setCurrentChatTitle] = useState('Yeni Sohbet');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editingChatId, setEditingChatId] = useState(null); // Sol paneldeki başlık düzenleme için yeni state
+  const [editingChatId, setEditingChatId] = useState(null);
   const messagesEndRef = useRef(null);
   const titleInputRef = useRef(null);
+  
+  // Yeni eklenen state'ler
+  const [isLoadingPrediction, setIsLoadingPrediction] = useState(false);
+  const [predictionFormData, setPredictionFormData] = useState({
+    category: '',
+    brand: '',
+    country: '',
+    city: '',
+    shipping_cost: '',
+    seller: '',
+    stock: '',
+    platform: '',
+    product_name_clean: '',
+    country_clean: '',
+    category_clean: '',
+    month: ''
+  });
 
   // Google Fonts'u uygulamaya dahil etmek için
   useEffect(() => {
@@ -54,7 +71,6 @@ export default function App() {
 
   // Yeni sohbet başlatma işlevi.
   const handleNewChat = () => {
-    // Mevcut sohbeti geçmişe kaydet
     if (messages.length > 1) {
       const existingChat = {
         id: activeChatId,
@@ -62,7 +78,6 @@ export default function App() {
         messages: messages,
       };
       setChatHistory((prevHistory) => {
-        // Eğer sohbet zaten varsa, güncelle. Yoksa yeni olarak ekle.
         const chatExists = prevHistory.some(chat => chat.id === activeChatId);
         if (chatExists) {
           return prevHistory.map(chat => chat.id === activeChatId ? existingChat : chat);
@@ -85,7 +100,6 @@ export default function App() {
 
   // Geçmişten sohbet yükleme işlevi
   const handleLoadChat = (chatId) => {
-    // Mevcut sohbeti geçmişe kaydetmeden önce kontrol et
     if (messages.length > 1) {
       const existingChat = {
         id: activeChatId,
@@ -107,7 +121,6 @@ export default function App() {
       setMessages(chatToLoad.messages);
       setActiveChatId(chatId);
       setCurrentChatTitle(chatToLoad.title);
-      // Yüklenen sohbeti geçmişten çıkarıp en üste taşıyabiliriz.
       setChatHistory((prevHistory) => [chatToLoad, ...prevHistory.filter(chat => chat.id !== chatId)]);
     }
   };
@@ -133,8 +146,6 @@ export default function App() {
   // Modelden gelecek örnek yanıt için yapılandırılmış bir veri döndürür.
   const getDummyResponse = (product) => {
     const lowerCaseProduct = product.toLowerCase();
-
-    // Simüle edilmiş veri bilimi modelinden alınmış yanıtlar
     const responses = {
       'zeytinyağı': {
         recommendation: `"Zeytinyağı" için en uygun potansiyel barındıran ülkeler:`,
@@ -167,7 +178,6 @@ export default function App() {
         reason: `Bu ülkelerde Türk tekstil ürünlerine karşı yüksek talep ve olumlu algı bulunmaktadır.`,
       }
     };
-
     const dummyResponse = responses[lowerCaseProduct] || {
       recommendation: `"${product}" için en çok potansiyel barındıran ülkeler:`,
       hsCodeInfo: `NLP analizi devam ediyor...`,
@@ -178,17 +188,14 @@ export default function App() {
       ],
       reason: `Önerdiğimiz ülkeler, yüksek ithalat hacmine sahip olmalarına rağmen, sizin gibi yeni bir ihracatçı için düşük rekabet avantajı sunmaktadır.`,
     };
-
-    // `chartData`'yı her zaman `countries` dizisinden oluşturur.
     dummyResponse.chartData = dummyResponse.countries.map(c => ({
       country: c.name,
-      volume: c.volume / 1000000, // Milyon olarak
+      volume: c.volume / 1000000,
     }));
-
     return dummyResponse;
   };
 
-  // Mesaj gönderme işlevini yönetir. (GÜNCELLENMİŞ HALİ)
+  // Mesaj gönderme işlevini yönetir. (CHATBOT KISMI)
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -199,48 +206,41 @@ export default function App() {
       text: input,
     };
     
-    // Önce kullanıcı mesajını ekrana ekle
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     
-    // Input'u temizle ve yükleniyor durumunu başlat
     const currentInput = input;
     setInput('');
     setIsLoading(true);
 
-    // İlk kullanıcı mesajından sonra sohbet adını otomatik olarak belirle
     if (messages.length === 1) {
       setCurrentChatTitle(`${userMessage.text} Analizi`);
     }
 
     try {
-      // --- BURASI GERÇEK API İSTEĞİNİN YAPILDIĞI YER ---
-      const response = await fetch('http://127.0.0.1:5000/chat', { // Backend sunucunun adresi
+      const response = await fetch('http://127.0.0.1:5000/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: currentInput }), // Backend'in beklediği format { "message": "..." }
+        body: JSON.stringify({ message: currentInput }),
       });
 
       if (!response.ok) {
-        // Eğer sunucudan 4xx veya 5xx gibi bir hata kodu dönerse
         throw new Error(`API hatası: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json(); // Backend'den gelen JSON yanıtını al
+      const data = await response.json();
 
-      // Backend'den gelen yanıtı mesajlara ekle
       const botResponse = {
         id: `bot-${Date.now()}`,
         sender: 'bot',
-        text: data.response, // Backend'in `jsonify({"response": response.text})` şeklinde döndürdüğü veri
+        text: data.response,
       };
       
       setMessages((prevMessages) => [...prevMessages, botResponse]);
 
     } catch (error) {
-      // Eğer ağ hatası veya fetch içinde bir sorun olursa
       console.error('Mesaj gönderilirken bir hata oluştu:', error);
       const errorResponse = {
         id: `bot-error-${Date.now()}`,
@@ -249,10 +249,81 @@ export default function App() {
       };
       setMessages((prevMessages) => [...prevMessages, errorResponse]);
     } finally {
-      // İstek başarılı da olsa, hata da olsa yükleniyor durumunu bitir
       setIsLoading(false);
     }
   };
+
+  // Yeni eklenen fonksiyon: ML tahmini yapma (PREDICT KISMI)
+  const handlePredictionInputChange = (e) => {
+    const { name, value } = e.target;
+    setPredictionFormData(prevState => ({
+      ...prevState,
+      [name]: value
+    }));
+  };
+
+  const handlePredictSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoadingPrediction(true);
+  
+    // Gönderilecek veriyi hazırlama
+    const dataForPrediction = {
+      category: predictionFormData.category,
+      brand: predictionFormData.brand,
+      country: predictionFormData.country,
+      city: predictionFormData.city,
+      shipping_cost: parseFloat(predictionFormData.shipping_cost) || 0,
+      seller: predictionFormData.seller,
+      stock: parseInt(predictionFormData.stock) || 0,
+      platform: predictionFormData.platform,
+      product_name_clean: predictionFormData.product_name_clean,
+      country_clean: predictionFormData.country_clean,
+      category_clean: predictionFormData.category_clean,
+      month: parseInt(predictionFormData.month) || 1,
+    };
+  
+    try {
+      const response = await fetch('http://127.0.0.1:5000/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataForPrediction),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`API hatası: ${response.status} ${response.statusText}`);
+      }
+  
+      const result = await response.json();
+      
+      const predictionMessage = {
+        id: `bot-prediction-${Date.now()}`,
+        sender: 'bot',
+        text: `Girilen verilere göre ürünün tahmini fiyatı: ${result.predicted_price.toFixed(2)} $`,
+      };
+      setMessages((prevMessages) => [...prevMessages, predictionMessage]);
+
+      // Formu temizle
+      setPredictionFormData({
+        category: '', brand: '', country: '', city: '', shipping_cost: '',
+        seller: '', stock: '', platform: '', product_name_clean: '',
+        country_clean: '', category_clean: '', month: ''
+      });
+  
+    } catch (error) {
+      console.error('Tahmin yapılırken bir hata oluştu:', error);
+      const errorMessage = {
+        id: `bot-error-pred-${Date.now()}`,
+        sender: 'bot',
+        text: `Üzgünüm, fiyat tahmini yapılamadı. Hata: ${error.message}`,
+      };
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+    } finally {
+      setIsLoadingPrediction(false);
+    }
+  };
+
 
   // Botun zengin yanıtını görselleştiren bileşen
   const renderRichResponse = (response) => {
@@ -267,14 +338,12 @@ export default function App() {
         </h4>
         <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{response.reason}</p>
 
-        {/* Harita görselleştirme */}
         {response.countries && response.countries.length > 0 && (
           <div className="space-y-2">
             <h5 className={`flex items-center font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
               <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
               Potansiyel Bölgeler
             </h5>
-            {/* Inline SVG World Map */}
             <svg
               className="w-full h-auto rounded-lg shadow-md"
               viewBox="0 0 1000 500"
@@ -283,14 +352,12 @@ export default function App() {
                 backgroundColor: isDarkMode ? '#1F2937' : '#E5E7EB',
               }}
             >
-              {/* Default colors for all countries */}
               <g
                 fill={isDarkMode ? '#4B5563' : '#D1D5DB'}
                 stroke="#FFF"
                 strokeWidth="0.5"
                 strokeLinejoin="round"
               >
-                {/* Simplified SVG Paths for a few countries and a placeholder for the rest of the world */}
                 <path id="Germany" d="M480 200 L490 205 L495 200 L480 190 Z" />
                 <path id="France" d="M450 200 L460 210 L470 205 L465 195 Z" />
                 <path id="Japan" d="M900 250 L910 260 L920 255 L915 245 Z" />
@@ -302,17 +369,14 @@ export default function App() {
                 <path id="Netherlands" d="M480 185 L485 190 L490 185 L485 180 Z" />
                 <path id="Sweden" d="M520 160 L530 170 L540 165 L535 155 Z" />
                 <path id="Turkey" d="M550 220 L560 225 L570 220 L565 215 Z" />
-
-                {/* Rest of the world (placeholder) */}
                 <path d="M0 0 H1000 V500 H0 Z" fill={isDarkMode ? '#4B5563' : '#E5E7EB'} />
               </g>
 
-              {/* Apply custom colors for recommended countries and user's country */}
               {recommendedCountryNames.map((countryName) => (
                 <path
                   key={countryName}
                   id={countryName}
-                  d="" // Path data needs to be provided for each country. This is a simplified example.
+                  d=""
                   fill={isDarkMode ? '#34D399' : '#10B981'}
                   stroke="#FFF"
                   strokeWidth="0.5"
@@ -321,7 +385,7 @@ export default function App() {
 
               <path
                 id="Turkey"
-                d="M550 220 L560 225 L570 220 L565 215 Z" // Placeholder path for Turkey
+                d="M550 220 L560 225 L570 220 L565 215 Z"
                 fill="#F97316"
                 stroke="#FFF"
                 strokeWidth="0.5"
@@ -334,7 +398,6 @@ export default function App() {
         )}
 
         <div className="grid md:grid-cols-2 gap-4">
-          {/* Ülkeler listesi */}
           {response.countries && response.countries.length > 0 && (
             <div className="flex flex-col space-y-2">
               <h5 className={`font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Önerilen Ülkeler:</h5>
@@ -351,7 +414,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Tablo görünümü */}
           {response.countries && response.countries.length > 0 && (
             <div className="space-y-2">
               <h5 className={`flex items-center font-semibold text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
@@ -388,7 +450,6 @@ export default function App() {
           )}
         </div>
 
-        {/* HS Kodu Tahmini */}
         <div className="flex items-center space-x-2 p-2 bg-indigo-500 bg-opacity-10 rounded-lg">
           <Sparkles className="w-3 h-3 text-indigo-500" />
           <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{response.hsCodeInfo}</span>
@@ -398,11 +459,9 @@ export default function App() {
   };
 
   return (
-    // Boşluğu eklemek için ana kapsayıcıya "py-8" (üst ve alt dolgu) eklendi.
     <div className={`flex flex-col min-h-screen py-8 antialiased transition-colors duration-300 ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
       <div className={`flex flex-col md:flex-row flex-grow w-full max-w-4xl mx-auto shadow-xl rounded-2xl overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
 
-        {/* Sohbet Geçmişi Sütunu */}
         <div className={`hidden md:flex flex-col w-1/4 p-4 border-r transition-colors duration-300 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
           <div className="flex justify-between items-center mb-4">
             <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Sohbetler</h3>
@@ -449,7 +508,6 @@ export default function App() {
                 ) : (
                   <span onClick={() => {
                     setEditingChatId(chat.id);
-                    // Use a timeout to ensure the input is rendered before focusing
                     setTimeout(() => titleInputRef.current?.focus(), 0);
                   }} className="text-sm font-medium truncate">{chat.title}</span>
                 )}
@@ -472,9 +530,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Ana Sohbet Ekranı */}
         <div className="flex flex-col flex-grow">
-          {/* Sohbet başlığı ve kontrol butonları */}
           <div
             className={`flex justify-between items-center p-4 text-white font-bold tracking-wide transition-colors duration-300 relative rounded-tl-2xl rounded-bl-2xl md:rounded-l-none`}
             style={{
@@ -484,7 +540,6 @@ export default function App() {
                 : 'linear-gradient(to right, #0d9488, #0ea5e9)',
             }}
           >
-            {/* Logo ve başlık */}
             <div className="flex items-center space-x-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
                 <path d="M12 2l-5 5h10l-5-5z" />
@@ -512,7 +567,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Menü ve Dark/Light Mod butonu */}
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleNewChat}
@@ -531,7 +585,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Mesajların görüntülendiği alan */}
           <div className={`flex flex-col flex-grow p-4 overflow-y-auto space-y-4 transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
             {messages.map((message) => (
               <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
@@ -542,7 +595,6 @@ export default function App() {
                       : (isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800') + ' rounded-bl-md'
                   }`}
                 >
-                  {/* Bot mesajları için özel görselleştirme */}
                   {message.sender === 'bot' && typeof message.text === 'object' ? (
                     renderRichResponse(message.text)
                   ) : (
@@ -551,7 +603,7 @@ export default function App() {
                 </div>
               </div>
             ))}
-            {/* Yükleniyor durumu */}
+
             {isLoading && (
               <div className="flex justify-start animate-fadeIn">
                 <div className={`flex items-center space-x-2 p-3 rounded-xl shadow-sm transition-colors duration-300 ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
@@ -572,7 +624,64 @@ export default function App() {
                 </div>
               </div>
             )}
+            
+            {/* Yeni eklenen yüklenme durumu */}
+            {isLoadingPrediction && (
+                <div className="flex justify-start animate-fadeIn">
+                    <div className={`flex items-center space-x-2 p-3 rounded-xl shadow-sm transition-colors duration-300 ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
+                        <svg
+                            className="w-5 h-5 text-indigo-500 animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                        <span className="text-sm">Fiyat tahmin ediliyor...</span>
+                    </div>
+                </div>
+            )}
+
             <div ref={messagesEndRef} />
+          </div>
+
+          {/* Yeni eklenen ML Tahmin Formu */}
+          <div className={`p-4 border-t transition-colors duration-300 ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+              <h3 className={`text-lg font-semibold mb-3 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                Ürün Fiyatı Tahmini
+              </h3>
+              <form onSubmit={handlePredictSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.keys(predictionFormData).map(key => (
+                      <input 
+                          key={key}
+                          type={['shipping_cost', 'stock', 'month'].includes(key) ? 'number' : 'text'}
+                          name={key}
+                          placeholder={key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                          value={predictionFormData[key]}
+                          onChange={handlePredictionInputChange}
+                          className={`p-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
+                      />
+                  ))}
+                  <button 
+                      type="submit" 
+                      className={`col-span-full p-3 rounded-full text-white text-sm font-semibold flex items-center justify-center transition-all duration-300 transform ${
+                          isLoadingPrediction
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : isDarkMode
+                              ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
+                              : 'bg-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
+                      } focus:outline-none focus:ring-2`}
+                      disabled={isLoadingPrediction}
+                  >
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      <span>{isLoadingPrediction ? 'Tahmin Ediliyor...' : 'Fiyati Tahmin Et'}</span>
+                  </button>
+              </form>
           </div>
 
           {/* Mesaj gönderme formu */}
@@ -582,7 +691,7 @@ export default function App() {
                 <input
                   type="text"
                   className={`flex-grow p-3 border rounded-full text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700' : 'bg-white border-gray-300'}`}
-                  placeholder="İhracat yapmak istediğiniz ürün adını girin..."
+                  placeholder="İhracat yapmak istediğiniz ürün adini girin..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                 />
@@ -592,8 +701,8 @@ export default function App() {
                     isLoading
                       ? 'bg-gray-400 cursor-not-allowed'
                       : isDarkMode
-                        ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
-                        : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500'
+                      ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                      : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500'
                   } focus:outline-none focus:ring-2 hover:scale-105`}
                   disabled={isLoading}
                 >
