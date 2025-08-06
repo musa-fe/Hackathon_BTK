@@ -92,7 +92,14 @@ def get_chatbot_response_based_on_state(session_id, user_message):
         else:
             # Standart Gemini yanıtı
             try:
-                gemini_response = gemini_model.generate_content(user_message)
+                # Gemini'ye uygulamanın bağlamını belirtiyoruz
+                context_prompt = (
+                    "Sen bir ihracat ve ürün analizi chatbotusun. Amacın, kullanıcılara ürünleri hakkında bilgi vermek, pazar analizi yapmak ve ihracat süreçlerinde yardımcı olmaktır. "
+                    "Kendini bu bağlamda tanıt ve genel sorulara da bu rolünle cevap ver. "
+                    "Yanıtını kısa paragraflara veya madde işaretlerine ayır ve mümkünse çok uzun tutma."
+                )
+                prompt_for_gemini = f"{context_prompt}\n\nKullanıcı sorusu: {user_message}"
+                gemini_response = gemini_model.generate_content(prompt_for_gemini)
                 response = gemini_response.text
             except Exception as e:
                 logging.error(f"Gemini API hatası: {e}")

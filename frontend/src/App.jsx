@@ -462,7 +462,58 @@ export default function App() {
     } 
     // Eğer yanıt sadece metin ise (normal chatbot yanıtı)
     else if (typeof response === 'string') {
-      return <span className="text-sm">{response}</span>;
+      const lines = response.split('\n'); // Her satırı ayrı ayrı al
+
+      let currentList = [];
+      const renderedContent = [];
+
+      lines.forEach((line, index) => {
+        // Madde işareti kontrolü: * veya - ile başlayan satırlar
+        if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
+          currentList.push(line.trim().substring(2).trim()); // Madde işaretini kaldır
+        } else {
+          // Eğer bir liste varsa ve yeni bir paragraf başlıyorsa, listeyi render et
+          if (currentList.length > 0) {
+            renderedContent.push(
+              <ul key={`list-${index}`} className="list-disc list-inside space-y-1 ml-4 text-sm">
+                {currentList.map((item, i) => (
+                  <li key={`list-item-${index}-${i}`} className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            );
+            currentList = []; // Listeyi sıfırla
+          }
+          // Boş satırları atla veya paragraf olarak ekle
+          if (line.trim() !== '') {
+            renderedContent.push(
+              <p key={`para-${index}`} className={`text-sm leading-relaxed ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                {line.trim()}
+              </p>
+            );
+          }
+        }
+      });
+
+      // Döngü bittikten sonra kalan bir liste varsa onu da render et
+      if (currentList.length > 0) {
+        renderedContent.push(
+          <ul key={`final-list`} className="list-disc list-inside space-y-1 ml-4 text-sm">
+            {currentList.map((item, i) => (
+              <li key={`final-list-item-${i}`} className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                {item}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      return (
+        <div className="flex flex-col space-y-2 p-4 rounded-lg shadow-md transition-colors duration-300">
+          {renderedContent}
+        </div>
+      );
     }
     // Varsayılan olarak boş döndür
     return null;
@@ -507,7 +558,7 @@ export default function App() {
                     onBlur={() => setEditingChatId(null)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        setEditingChatId(null);
+                        setIsEditingTitle(false);
                       }
                     }}
                     className={`flex-grow bg-transparent border-b text-sm font-medium focus:outline-none ${
