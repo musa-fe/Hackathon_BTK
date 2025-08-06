@@ -44,7 +44,7 @@ def parse_kv_pairs(kv_list):
     out = {}
     for kv in kv_list or []:
         if "=" not in kv:
-            print(f"--kv 'key=value' biçiminde olmalı, sorunlu: {kv}", file=sys.stderr)
+            print(f"--kv 'key=value' biçiminde olmali, sorunlu: {kv}", file=sys.stderr)
             sys.exit(2)
         k, v = kv.split("=", 1)
         k = k.strip()
@@ -79,10 +79,10 @@ def main():
     args = ap.parse_args()
 
     if not Path(args.model_path).exists():
-        print(f"Model bulunamadı: {args.model_path}", file=sys.stderr)
+        print(f"Model bulunamadi: {args.model_path}", file=sys.stderr)
         sys.exit(1)
     if not Path(args.features_path).exists():
-        print(f"Özellik listesi bulunamadı: {args.features_path}", file=sys.stderr)
+        print(f"Özellik listesi bulunamadi: {args.features_path}", file=sys.stderr)
         sys.exit(1)
 
     model, feature_cols = load_model_and_features(args.model_path, args.features_path)
@@ -102,7 +102,7 @@ def main():
         return
 
    
-    print("Kullanım örneği:")
+    print("Kullanim örneği:")
     print('python predict.py --kv "category=Electronics" --kv "brand=Sony" --kv "city=Berlin" --kv "shipping_cost=6.0" --kv "seller=DemoSeller" --kv "stock=True" --kv "platform=Amazon" --kv "month=7"')
 
 if __name__ == "__main__":
